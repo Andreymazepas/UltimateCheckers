@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<form id="frm1" >
+  Height: <input type="number" name="height" min="1" max="32"><br>
+  Width: <input type="number" name="width" min="1" max="32"><br><br>
+  Frames: <input type="number" name="frames" min="1" max="4"><br><br>
+  Palette 1: <input type="number" name="p1" min="0" max="31"><br>
+  Palette 2: <input type="number" name="p2" min="0" max="31"><br>
+  Palette 3: <input type="number" name="p3" min="0" max="31"><br>
+  Palette 4: <input type="number" name="p4" min="0" max="31"><br>
+</form>
+
+<p>Click "Generate" to generate the sprite data word</p>
+
+<button onclick="myFunction()">Generate</button>
+
+<p id="demo"></p>
+<p id="demo2"></p>
+
+<script>
+function myFunction() {
+	document.getElementById("demo").innerHTML = ""
+    var x = document.getElementById("frm1").height.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x-1 >>> 0).toString(2)).substr(-5);
+    var x = document.getElementById("frm1").width.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x-1 >>> 0).toString(2)).substr(-5);
+    var x = document.getElementById("frm1").frames.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x-1 >>> 0).toString(2)).substr(-2);
+    var x = document.getElementById("frm1").p1.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x >>> 0).toString(2)).substr(-5);
+    var x = document.getElementById("frm1").p2.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x >>> 0).toString(2)).substr(-5);
+    var x = document.getElementById("frm1").p3.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x >>> 0).toString(2)).substr(-5);
+    var x = document.getElementById("frm1").p4.value;
+    document.getElementById("demo").innerHTML += ("00000000"+(x >>> 0).toString(2)).substr(-5);
+    var x = document.getElementById("demo").innerHTML
+    document.getElementById("demo2").innerHTML = "0x" + parseInt(x, 2).toString(16).toUpperCase();
+    
+}
+</script>
+
+</body>
+</html>
