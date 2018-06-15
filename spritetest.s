@@ -1,7 +1,7 @@
 .data
 
 VGAADDR: .word 0xFF000000
-VRAMPOINTER: .word	0xFF000000
+VRAMPOINTER: .word	0xFF100000
 
 ERROR_EXIT_CODE: .byte 0x00
 
@@ -10,7 +10,7 @@ testsprite:
 0x00, 0x00, 0x00, 0x00, 0x05, 0x55, 0x55, 0x00, 0x16, 0xAA, 0xA9, 0x40, 0x5A, 0xAA, 0xAA, 0x50, 
 0x5A, 0xAA, 0xA9, 0x54, 0x66, 0xAA, 0x95, 0xA4, 0x69, 0x55, 0x5A, 0xA4, 0x6A, 0xAA, 0xAA, 0x94, 
 0x6A, 0xAA, 0xAA, 0x50, 0x5A, 0xAA, 0xA9, 0x40, 0x15, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00
-testsprite_palette: .word 0xC7FF07C7
+testsprite_palette: .word 0xC707FFC7
 testsprite_address: .word 0x00000000
 .eqv VGAADDRESSINI      0xFF000000
 .eqv VGAADDRESSFIM      0xFF012C00
@@ -30,10 +30,34 @@ testsprite_address: .word 0x00000000
 	la t0, testsprite_address
 	sw a0, 0(t0)
 	
+	li a0, 0
+	li a1, 0
+	jal getaddress
+	mv a1, a0
 	lw a0, testsprite_address
-	lw a1, VGAADDR
-	#lw a2, testsprite_data
-	#jal drawsprite
+	jal drawtile
+	
+	li a0, 300
+	li a1, 0
+	jal getaddress
+	mv a1, a0
+	lw a0, testsprite_address
+	jal drawtile
+	
+	li a0, 	0
+	li a1, 220
+	jal getaddress
+	mv a1, a0
+	lw a0, testsprite_address
+	jal drawtile
+	
+	li a0, 300
+	li a1, 220
+	jal getaddress
+	mv a1, a0
+	lw a0, testsprite_address
+	jal drawtile
+
 
 	
 	li a7 10
@@ -44,8 +68,8 @@ testsprite_address: .word 0x00000000
 # uncompress()
 #
 # description:
-# This function uncompresses sprites to a specific location
-# in memory. The sprites are decompressed in color bytes, based
+# This function uncompresses tiles to a specific location
+# in memory. The tiles are decompressed in color bytes, based
 # on the palette defined at the sprite_palette
 #
 # inputs:
@@ -194,41 +218,170 @@ uncompress:
 		jalr zero,ra, 0
 
 	 	
-#input: a0 (sprite address) !!UNCOMPRESSED!!
+#input: a0 (tile address) !!UNCOMPRESSED!!
 #	a1 (draw address)
-#	a2 (sprite data)
-drawsprite:
-	 li t0, 0xF8000000
-	 and t0, a2, t0 #height
-	 srli t0, t0, 27
-	 addi t0, t0, 1
-	 li t1, 0x07C00000
-	 and t1, a2, t1 #width
-	 srli t1, t1, 22
-	 addi t1, t1, 1
-	 #for (t2 <- 0 until height){
-	 #	for (t3 <- 0 until width){
-	 #		a1 = a0[t2][t3]
-	 #		t3++
-	 li t2, 0
-	 mv t6, a0 #sprite address
-	 drawsprite_for1: beq t2, t0, drawsprite_endfor1
-	 	li t4, 320
-	 	mul t4, t2, t4 
-	 	add t5, a1, t4 #t5 = temporary draw address height
-	 	li t3, 0
-	 	drawsprite_for2: beq t3, t1, drawsprite_endfor2
-	 		lb s11 0(t6)
-	 		sb s11 0(t5)
-	 		addi t6, t6, 1
-	 		addi t5, t5, 1
-	 		addi t3, t3, 1
-	 		j drawsprite_for2
-	 	drawsprite_endfor2:
-	 	addi t2, t2, 1
-	 	j drawsprite_for1
-	 drawsprite_endfor1:
-	 jr ra
+drawtile:
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	addi a0, a0, 16
+	addi a1, a1, 320
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 8(a1)
+	lw t0, 12(a0)
+	sw t0, 12(a1)
+	
+	jalr zero, ra, 0
+
 	
 #input: a0 (address)
 #output: a0 (x)
@@ -252,6 +405,8 @@ getaddress:
 	mul a1, a1, t0
 	add a1, a1, a0
 	mv a0, a1
+	li t0, 0xff000000
+	add a0, a0, t0
 	jr ra
 	
 #input: a0 (color)
