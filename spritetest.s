@@ -4,7 +4,7 @@ cursor: .word 0x00005000, 0x00006900, 0x00001A40, 0x00000690,
 0x94000069, 0xA694151A, 0x69A64696, 0xAAA9A5A9,
 0xAAAA691A, 0x6AAAAA41, 0x9AAAAA90, 0x6AAAAAA4,
 0x06AAAAA9, 0x01AAAAA9, 0x001AAAAA, 0x4006AAAA,
-0x90006AAA, 0x90001AAA, 0xA4000555, 0x55000000
+0x90006AAA, 0x90001AAA, 0xA4000555, 0x55000000 
 cursor_data: .word 0xAC000440
 cursor_address: .word 0x00000000
 VGAADDR: .word 0xFF000000
@@ -13,6 +13,10 @@ palette: .word 0xC700FF00, 0x00000000, 0x00000000, 0x00000000,
 		0x00000000, 0x00000000, 0x00000000, 0x00000000
 .eqv VGAADDRESSINI      0xFF000000
 .eqv VGAADDRESSFIM      0xFF012C00
+
+# SPRITE DATA:
+# 00000		00000	00		00000 00000 00000 00000
+# height    width   frames  Palette(00,01,10,11)
 
 
 .text
@@ -23,8 +27,12 @@ palette: .word 0xC700FF00, 0x00000000, 0x00000000, 0x00000000,
 	jal getcoordinates
 	jal getaddress
 	
-	li a0, 0x000000FF
+	li a0, 0x00000046
 	jal clsCLS
+	
+	li a7 10
+	ecall
+	
 	
 	la a0, cursor
 	lw a1, cursor_data
@@ -40,54 +48,79 @@ palette: .word 0xC700FF00, 0x00000000, 0x00000000, 0x00000000,
 	li a7 10
 	ecall
 
+# input: a0 (color index)
+# output: a0 (color)
+
 #input: a0 (sprite address)
 #	a1 (sprite data)
 #output:a0 (vram address)
 uncompress:
-	li t0, 0xF8000000
-	 and t0, a2, t0 #height
-	 srli t0, t0, 27
-	 addi t0, t0, 1
-	 li t1, 0x07C00000
-	 and t1, a2, t1 #width
-	 srli t1, t1, 22
-	 addi t1, t1, 1
-	 mul t0, t0, t1 #number of pixels
-	 li t1, 4
-	 div t0, t0, t1 #number of bytes to read
+	mv s0, a0 # save sprite address
+	mv s1, a1 # save sprite data
+	li t0, 0xF8000000 # store mask in t0
+	 and t0, s1, t0 # get height from sprite data
+	 srli t0, t0, 27 # adjust to less significant bits
+	 addi t0, t0, 1 # add 1, so it starts at 1
+	 li t1, 0x07C00000 # store mask in t1
+	 and t1, s1, t1 # get width from sprite data
+	 srli t1, t1, 22 # adjust bits
+	 addi t1, t1, 1 # add 1
+	 mul t0, t0, t1 # number of pixels (2 bits), width * height
+	 li t1, 4 # 2 bits * 4 = 1 byte
+	 div t0, t0, t1 # number of bytes to read
 	 
-	 lw t6, VRAMPOINTER 
+	 lw s2, VRAMPOINTER
+	 mv s11, s2 # the original VRAMPOINTER, will be the a0 output at the end 
 	 li t1, 0
+
+	 # for t1 = 0; t1 != t0; t1++
 	uncompress_for: beq t1, t0, uncompress_forend
+
+		add t3, s0, t1 # store byte address to be read
+		lw t3, 0(t3) # fetches the byte
+
 	 	uncompress_switch00:
-	 		li t2, 0xFF000000
-	 		and t2, s11, t2
-	 		srli t2, t2, 24
-	 		sb t2, 0(t6)
+	 		li t2, 0x000F8000 # load mask 
+	 		and a0, s1, t2 # get color index from sprite data
+	 		srli a0, a0, 24 # adjust bits
+	 		jal get_color # get_color(index)
+	 		li t2, 0xC7 # transparency color
+	 		beq a0, t2, uncompress_switchend # if color == transparency, do nothing
+	 		sb a0, 0(s2) # store pixel at VRAMPOINTER
 	 		j uncompress_switchend
 	 	uncompress_switch01:
-	 		li t2, 0x00FF0000
-	 		and t2, s11, t2
-	 		srli t2, t2, 16
-	 		sb t2, 0(t6)
+	 		li t2, 0x00007C00
+	 		and a0, s1, t2
+	 		srli a0, a0, 16
+	 		jal get_color
+	 		li t2, 0xC7
+	 		beq a0, tw, uncompress_switchend
+	 		sb a0, 0(s2)
 	 		j uncompress_switchend
 	 	uncompress_switch10:
-	 		li t2, 0x0000FF00
-	 		and t2, s11, t2
-	 		srli t2, t2, 8
-	 		sb t2, 0(t6)
+	 		li t2, 0x000003E0
+	 		and a0, s1, t2
+	 		srli a0, a0, 8
+	 		jal get_color
+	 		li t2, 0xC7
+	 		beq a0, tw, uncompress_switchend
+	 		sb a0, 0(s2)
 	 		j uncompress_switchend
 	 	uncompress_switch11:
-	 		li t2, 0x000000FF
-	 		and t2, s11, t2
-	 		sb t2, 0(t6)
+	 		li t2, 0x0000001F
+	 		and a0, s1, t2
+	 		jal get_color
+	 		li t2, 0xC7
+	 		beq a0, tw, uncompress_switchend
+	 		sb a0, 0(s2)
 	 		j uncompress_switchend
 	 	uncompress_switchend:
-	 		addi t1, t1, 1
-	 		addi t6, t6, 1
+	 		addi t1, t1, 1 # increment iterator
+	 		addi s2, s2, 1 # increment VRAMPOINTER
 	 		j uncompress_for
 	 uncompress_forend:
-	 	
+	 # TODO store and load variables
+	 # TODO get_color
 	 	
 #input: a0 (sprite address) !!UNCOMPRESSED!!
 #	a1 (draw address)
