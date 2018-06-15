@@ -2,53 +2,40 @@
 
 VGAADDR: .word 0xFF000000
 VRAMPOINTER: .word	0xFF000000
-palette: .byte 0xC7, 0x00, 0xFF, 0x38
-		0xC0, 0x00, 0x00, 0x00
-		0x00, 0x00, 0x00, 0x00
-		0x00, 0x00, 0x00, 0x00
-		0x00, 0x00, 0x00, 0x00
-		0x00, 0x00, 0x00, 0x00
-		0x00, 0x00, 0x00, 0x00
+
 ERROR_EXIT_CODE: .byte 0x00
 
-testsprite: .byte 0x00, 0x00, 0x15, 0x54, 0x1B, 0xE4, 0x1A, 0xE4, 0x1A, 0xE4, 0x1A, 0xE4, 0x15, 0x54, 0x00, 0x00
-testsprite_data: .word 0x39C00881
+testsprite: 
+.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+0x00, 0x00, 0x00, 0x00, 0x05, 0x55, 0x55, 0x00, 0x16, 0xAA, 0xA9, 0x40, 0x5A, 0xAA, 0xAA, 0x50, 
+0x5A, 0xAA, 0xA9, 0x54, 0x66, 0xAA, 0x95, 0xA4, 0x69, 0x55, 0x5A, 0xA4, 0x6A, 0xAA, 0xAA, 0x94, 
+0x6A, 0xAA, 0xAA, 0x50, 0x5A, 0xAA, 0xA9, 0x40, 0x15, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00
+testsprite_palette: .word 0xC7FF07C7
 testsprite_address: .word 0x00000000
 .eqv VGAADDRESSINI      0xFF000000
 .eqv VGAADDRESSFIM      0xFF012C00
 
-# SPRITE DATA:
-# 00000		00000	00		00000 00000 00000 00000
-# height    width   frames  Palette(00,01,10,11)
+
 
 
 .text
 	
-	li a0, 0x000000c7
+	li a0, 0x00000000
 	jal clsCLS
 	
 	
 	la a0, testsprite
-	lw a1, testsprite_data
+	lw a1, testsprite_palette
 	jal uncompress
 	la t0, testsprite_address
 	sw a0, 0(t0)
 	
-	li a7, 10
-	ecall
 	lw a0, testsprite_address
 	lw a1, VGAADDR
 	#lw a2, testsprite_data
 	#jal drawsprite
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 320(a1)
-	lw t0, 12(a0)
-	sw t0, 332(a1)
 
+	
 	li a7 10
 	ecall
 
@@ -59,11 +46,11 @@ testsprite_address: .word 0x00000000
 # description:
 # This function uncompresses sprites to a specific location
 # in memory. The sprites are decompressed in color bytes, based
-# on the palette defined at the sprite_data
+# on the palette defined at the sprite_palette
 #
 # inputs:
 # a0 - address of compressed sprite
-# a1 - sprite_data following the model defined in the .data segment
+# a1 - sprite palette, four colours
 #
 # outputs:
 # a0 - address where the sprite was decompressed
@@ -94,23 +81,12 @@ uncompress:
 
 
 	mv s0, a0 # save sprite address
-	mv s1, a1 # save sprite data
-	li t0, 0xF8000000 # store mask in t0
-	 and t0, s1, t0 # get height from sprite data
-	 srli t0, t0, 27 # adjust to less significant bits
-	 addi t0, t0, 1 # add 1, so it starts at 1
-	 li t1, 0x07C00000 # store mask in t1
-	 and t1, s1, t1 # get width from sprite data
-	 srli t1, t1, 22 # adjust bits
-	 addi t1, t1, 1 # add 1
-	 mul t0, t0, t1 # number of pixels (2 bits), width * height
-	 li t1, 4 # 2 bits * 4 = 1 byte
-	 div t0, t0, t1 # number of bytes to read from sprite_address
+	mv s1, a1 # save sprite palette
+	li t0, 64 # number of bytes to read from sprite_address
 	 
 	 lw s2, VRAMPOINTER
 	 mv s11, s2 # the original VRAMPOINTER, will be the a0 output at the end 
 	 li t1, 0
-	 la t4, palette
 
 	 # for t1 = 0; t1 != t0; t1++
 	uncompress_for: beq t1, t0, uncompress_forend
@@ -164,36 +140,27 @@ uncompress:
 
 
 		 	uncompress_switch00:
-		 		li t2, 0x000F8000 # load mask 
-		 		and a0, s1, t2 # get color index from sprite data
-		 		srli a0, a0, 15 # adjust bits
-		 		# add base palette address to the index and fetch byte
-		 		add t5, a0, t4
-		 		lb t5, 0(t5) # color byte
-		 		sb t5, 0(s2) # store pixel at VRAMPOINTER
+		 		li t2, 0xFF000000 # load mask 
+		 		and a0, s1, t2 # get color from sprite palette
+		 		srli a0, a0, 24 # adjust bits
+		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch01:
-		 		li t2, 0x00007C00
-		 		and a0, s1, t2
-		 		srli a0, a0, 10
-		 		add t5, a0, t4
-		 		lb t5, 0(t5)
-		 		sb t5, 0(s2)
+		 		li t2, 0x00FF0000 # load mask 
+		 		and a0, s1, t2 # get color from sprite palette
+		 		srli a0, a0, 16 # adjust bits
+		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch10:
-		 		li t2, 0x000003E0
-		 		and a0, s1, t2
-		 		srli a0, a0, 5
-		 		add t5, a0, t4
-		 		lb t5,0(t5)
-		 		sb t5, 0(s2)
+		 		li t2, 0x0000FF00 # load mask 
+		 		and a0, s1, t2 # get color from sprite palette
+		 		srli a0, a0, 8 # adjust bits
+		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch11:
-		 		li t2, 0x0000001F
-		 		and a0, s1, t2
-		 		add t5, a0, t4
-		 		lb t5, 0(t5)
-		 		sb t5, 0(s2)
+		 		li t2, 0x000000FF # load mask 
+		 		and a0, s1, t2 # get color from sprite palette
+		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 	 	uncompress_switchend:	 		
 	 		jalr zero, ra,0
