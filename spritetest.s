@@ -1,14 +1,7 @@
 .data
-cursor: .word 0x12345678, 0x00006900, 0x00001A40, 0x00000690,
-0x000001A4, 0x00000069, 0x0000001A, 0x40000056,
-0x94000069, 0xA694151A, 0x69A64696, 0xAAA9A5A9,
-0xAAAA691A, 0x6AAAAA41, 0x9AAAAA90, 0x6AAAAAA4,
-0x06AAAAA9, 0x01AAAAA9, 0x001AAAAA, 0x4006AAAA,
-0x90006AAA, 0x90001AAA, 0xA4000555, 0x55000000 
-cursor_data: .word 0xAC000443
-cursor_address: .word 0x00000000
+
 VGAADDR: .word 0xFF000000
-VRAMPOINTER: .word	0xFF100000
+VRAMPOINTER: .word	0xFF000000
 palette: .byte 0xC7, 0x00, 0xFF, 0x38
 		0xC0, 0x00, 0x00, 0x00
 		0x00, 0x00, 0x00, 0x00
@@ -20,6 +13,7 @@ ERROR_EXIT_CODE: .byte 0x00
 
 testsprite: .byte 0x00, 0x00, 0x15, 0x54, 0x1B, 0xE4, 0x1A, 0xE4, 0x1A, 0xE4, 0x1A, 0xE4, 0x15, 0x54, 0x00, 0x00
 testsprite_data: .word 0x39C00881
+testsprite_address: .word 0x00000000
 .eqv VGAADDRESSINI      0xFF000000
 .eqv VGAADDRESSFIM      0xFF012C00
 
@@ -29,29 +23,32 @@ testsprite_data: .word 0x39C00881
 
 
 .text
-	lw s0 VGAADDR
-	li a0, 0xFF012C00
-	li t0, 0x07
-	sb t0, 0(a0)
-	jal getcoordinates
-	jal getaddress
 	
-	li a0, 0x00000038
+	li a0, 0x000000c7
 	jal clsCLS
 	
-
 	
 	la a0, testsprite
 	lw a1, testsprite_data
 	jal uncompress
-	la t0, cursor_address
+	la t0, testsprite_address
 	sw a0, 0(t0)
 	
-	#lw a0, cursor_address
-	#lw a1, VGAADDR
-	#lw a2, cursor_data
+	li a7, 10
+	ecall
+	lw a0, testsprite_address
+	lw a1, VGAADDR
+	#lw a2, testsprite_data
 	#jal drawsprite
-	
+	lw t0, 0(a0)
+	sw t0, 0(a1)
+	lw t0, 4(a0)
+	sw t0, 4(a1)
+	lw t0, 8(a0)
+	sw t0, 320(a1)
+	lw t0, 12(a0)
+	sw t0, 332(a1)
+
 	li a7 10
 	ecall
 
@@ -173,8 +170,6 @@ uncompress:
 		 		# add base palette address to the index and fetch byte
 		 		add t5, a0, t4
 		 		lb t5, 0(t5) # color byte
-		 		li t2, 0xC7 # transparency color
-		 		beq t5, t2, uncompress_switchend # if color == transparency, do nothing
 		 		sb t5, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch01:
@@ -183,8 +178,6 @@ uncompress:
 		 		srli a0, a0, 10
 		 		add t5, a0, t4
 		 		lb t5, 0(t5)
-		 		li t2, 0xC7
-		 		beq t5, t2, uncompress_switchend
 		 		sb t5, 0(s2)
 		 		j uncompress_switchend 
 		 	uncompress_switch10:
@@ -193,8 +186,6 @@ uncompress:
 		 		srli a0, a0, 5
 		 		add t5, a0, t4
 		 		lb t5,0(t5)
-		 		li t2, 0xC7
-		 		beq t5, t2, uncompress_switchend
 		 		sb t5, 0(s2)
 		 		j uncompress_switchend 
 		 	uncompress_switch11:
@@ -202,8 +193,6 @@ uncompress:
 		 		and a0, s1, t2
 		 		add t5, a0, t4
 		 		lb t5, 0(t5)
-		 		li t2, 0xC7
-		 		beq t5, t2, uncompress_switchend
 		 		sb t5, 0(s2)
 		 		j uncompress_switchend 
 	 	uncompress_switchend:	 		
@@ -211,6 +200,8 @@ uncompress:
 
 	uncompress_forend:
 		mv a0, s11 # return value
+		la t0, VRAMPOINTER
+		sw s2, 0(t0)
 
 		lw s0, 0(sp)
 		lw s1, 4(sp)
