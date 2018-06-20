@@ -6,12 +6,24 @@ VRAMPOINTER: .word	0xFF100000
 ERROR_EXIT_CODE: .byte 0x00
 
 testsprite: 
-.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-0x00, 0x00, 0x00, 0x00, 0x05, 0x55, 0x55, 0x00, 0x16, 0xAA, 0xA9, 0x40, 0x5A, 0xAA, 0xAA, 0x50, 
-0x5A, 0xAA, 0xA9, 0x54, 0x66, 0xAA, 0x95, 0xA4, 0x69, 0x55, 0x5A, 0xA4, 0x6A, 0xAA, 0xAA, 0x94, 
-0x6A, 0xAA, 0xAA, 0x50, 0x5A, 0xAA, 0xA9, 0x40, 0x15, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00
-testsprite_palette: .word 0xC707FFC7
+.byte 0x00,0x00,0x00,0x00,0x00,0x00,0x0F,0x03,
+  0x0D,0xCD,0x0D,0xF5,0x0D,0xE7,0x35,0x59,
+  0x39,0x55,0x35,0x56,0x39,0x55,0x39,0x55,
+  0x0E,0x55,0x0F,0xA9,0x03,0xFF,0x00,0x00,
+  0x00,0x00,0x00,0x00,0xFC,0x00,0x5F,0x00,
+  0x75,0xC0,0xD7,0x70,0x5D,0x70,0x75,0xF0,
+  0x97,0x70,0x5D,0x70,0x65,0xC0,0x57,0x00,
+  0x5C,0x00,0x70,0x00,0xC0,0x00,0x00,0x00
+testsprite_palette: .word 0xFFFFFFFF
 testsprite_address: .word 0x00000000
+testsprite_x: .word 0
+testsprite_y: .word 0
+testsprite_position: .word 0xFF000000
+moved: .word 0
+animacaoidiota: .word 260, 113, 268, 152, 217, 167, 160, 181,
+ 103, 171, 65, 148, 41, 119, 54, 71, 112, 43, 161, 39, 249, 50, 245, 92, 164, 116
+
+COLOR_PALETTE: .word 0x49A274FE
 .eqv VGAADDRESSINI      0xFF000000
 .eqv VGAADDRESSFIM      0xFF012C00
 
@@ -20,7 +32,7 @@ testsprite_address: .word 0x00000000
 
 .text
 	
-	li a0, 0x00000000
+	li a0, 0x00000049
 	jal clsCLS
 	
 	
@@ -32,36 +44,165 @@ testsprite_address: .word 0x00000000
 	
 	li a0, 0
 	li a1, 0
-	jal getaddress
-	mv a1, a0
-	lw a0, testsprite_address
-	jal drawtile
+	la a2, testsprite_position
+	la a3, testsprite_address
+	la t0, animacaoidiota
+	loopidiota:
+		lw a0, 0(t0)
+		lw a1, 4(t0)
+		addi t0, t0, 8
+		jal MOVE_OBJECT
+		li a0, 500
+		li a7, 32
+		ecall
+		j loopidiota
 	
-	li a0, 300
-	li a1, 0
-	jal getaddress
-	mv a1, a0
-	lw a0, testsprite_address
-	jal drawtile
+
+	loop:
+
+		li a0, 127 # x destination
+		li a1, 200 # y destination
 	
-	li a0, 	0
-	li a1, 220
-	jal getaddress
-	mv a1, a0
-	lw a0, testsprite_address
-	jal drawtile
-	
-	li a0, 300
-	li a1, 220
-	jal getaddress
-	mv a1, a0
-	lw a0, testsprite_address
-	jal drawtile
+	MOVE_OBJECT:
+
+		addi sp, sp, -80
+			sw s0, 0(sp)
+			sw s1, 4(sp)
+			sw s2, 8(sp)
+			sw s3, 12(sp)
+			sw s4, 16(sp)
+			sw s5, 20(sp)
+			sw s6, 24(sp)
+			sw s7, 28(sp)
+			sw s8, 32(sp)
+			sw s9, 36(sp)
+			sw s10, 40(sp)
+			sw s11, 44(sp)
+			sw t0, 48(sp)
+			sw t1, 52(sp)
+			sw t2, 56(sp)
+			sw t3, 60(sp)
+			sw t4, 64(sp)
+			sw t5, 68(sp)
+		 	sw t6, 72(sp)
+			sw ra, 76(sp)
+
+		mv s0, a0
+		mv s1, a1
+		mv s3, a2 # address of position
+		mv s4, a3 # address of graphical data
+		jal getaddress
+		mv s2, a0 # destination address
+		
+		move_loop:
+		lw t1, 0(s3)
+		beq t1, s2, endmove_loop
+			mv a0, t1
+			jal getcoordinates
+			bgt a0,s0, greater_x
+			blt a0,s0, lesser_x
+			j move_y
+			greater_x:
+				addi a0, a0, -1
+				j move_y
+			lesser_x:
+				addi a0, a0, 1
+			move_y:
+				bgt a1, s1, greater_y
+				blt a1, s1, lesser_y
+				j store_move_address
+			greater_y:
+				addi a1, a1, -1
+				j store_move_address
+			lesser_y:
+				addi a1, a1, 1
+			store_move_address:
+				jal getaddress
+				sw a0, 0(s3) #store new position
+				#DRAW SHIT
+				mv a1, a0 # position to draw
+				lw a0, 0(s4) # address of graphics
+				jal drawtile
+				li a0, 15
+				li a7, 32 # sleep
+				ecall
+			j move_loop
+		endmove_loop:
+		lw s0, 0(sp)
+			lw s1, 4(sp)
+			lw s2, 8(sp)
+			lw s3, 12(sp)
+			lw s4, 16(sp)
+			lw s5, 20(sp)
+			lw s6, 24(sp)
+			lw s7, 28(sp)
+			lw s8, 32(sp)
+			lw s9, 36(sp)
+			lw s10, 40(sp)
+			lw s11, 44(sp)
+			lw t0, 48(sp)
+			lw t1, 52(sp)
+			lw t2, 56(sp)
+			lw t3, 60(sp)
+			lw t4, 64(sp)
+			lw t5, 68(sp)
+			lw t6, 72(sp)
+			lw ra, 76(sp)
+			addi sp, sp 80
+		jalr zero, ra, 0
 
 
+	#CHECK KEYBOARD
+	li t1,0xFF200000
+	lw t0,0(t1)
+	andi t0,t0,0x0001		# Le bit de Controle Teclado
+		beq t0,zero,DRAW   	   	# Se n�o h� tecla pressionada PULA
+		lw t2,4(t1)
+		li t0, 97
+		beq t2, t0, MOVE_LEFT
+		li t0, 100
+		beq t2, t0, MOVE_RIGHT
+		j DRAW
+
+		MOVE_LEFT:
+			li a0, -8
+			j MOVE_X
+		MOVE_RIGHT:
+			li a0, 8
+		MOVE_X:
+		la t0, testsprite_x
+		lw t1, 0(t0)
+		add t1, t1, a0
+		sw t1, 0(t0)  	
+		li t0, 1
+		la t1, moved
+		sw t0, 0(t1)		
+
+	#MOVE Y 
+
+	#DRAW
+
+	DRAW:
+	lw t0, moved
+	beqz t0, loop
+	la t0, moved
+	li t1, 0
+	sw t1, 0(t0)
 	
-	li a7 10
+	
+	lw a0, testsprite_x
+	lw a1, testsprite_y
+	jal getaddress
+	mv a1, a0
+	lw a0, testsprite_address
+	jal drawtile
+	
+	li a0, 10
+	li a7, 32
 	ecall
+	
+	j loop
+
 
 
 #############################################################################
@@ -81,37 +222,50 @@ testsprite_address: .word 0x00000000
 ##############################################################################
 uncompress:
 	addi sp, sp, -80
-	sw s0, 0(sp)
-	sw s1, 4(sp)
-	sw s2, 8(sp)
-	sw s3, 12(sp)
-	sw s4, 16(sp)
-	sw s5, 20(sp)
-	sw s6, 24(sp)
-	sw s7, 28(sp)
-	sw s8, 32(sp)
-	sw s9, 36(sp)
-	sw s10, 40(sp)
-	sw s11, 44(sp)
-	sw t0, 48(sp)
-	sw t1, 52(sp)
-	sw t2, 56(sp)
-	sw t3, 60(sp)
-	sw t4, 64(sp)
-	sw t5, 68(sp)
-	sw t6, 72(sp)
-	sw ra, 76(sp)
+		sw s0, 0(sp)
+		sw s1, 4(sp)
+		sw s2, 8(sp)
+		sw s3, 12(sp)
+		sw s4, 16(sp)
+		sw s5, 20(sp)
+		sw s6, 24(sp)
+		sw s7, 28(sp)
+		sw s8, 32(sp)
+		sw s9, 36(sp)
+		sw s10, 40(sp)
+		sw s11, 44(sp)
+		sw t0, 48(sp)
+		sw t1, 52(sp)
+		sw t2, 56(sp)
+		sw t3, 60(sp)
+		sw t4, 64(sp)
+		sw t5, 68(sp)
+	 	sw t6, 72(sp)
+		sw ra, 76(sp)
 
 
 
 	mv s0, a0 # save sprite address
-	mv s1, a1 # save sprite palette
-	li t0, 64 # number of bytes to read from sprite_address
+	mv s1, a1 # save sprite palette mask
+	
 	 
 	 lw s2, VRAMPOINTER
 	 mv s11, s2 # the original VRAMPOINTER, will be the a0 output at the end 
-	 li t1, 0
 
+	 #load colors on s7-s10
+	 lw t2, COLOR_PALETTE #load color palette
+	 and t2, t2, s1 	# apply sprite-specific mask
+	 li t1, 0xC7C7C7C7 # load transparency
+	 not t0, s1		#negate spprite mask
+	 and t1, t1, t0 	# apply to transparency
+	 or t2, t2, t1		# get result of palette + transparency 
+	 srli s7, t2, 24	# color 00
+	 srli s8, t2, 16	# color 01
+	 srli s9, t2, 8		# color 10
+	 add  s10, t2, zero # color 11, disregard the other bytes of the word
+
+	 li t1, 0
+	 li t0, 64 # number of bytes to read from sprite_address
 	 # for t1 = 0; t1 != t0; t1++
 	uncompress_for: beq t1, t0, uncompress_forend
 
@@ -163,28 +317,18 @@ uncompress:
 			sb t0, 0(t1) 
 
 
+
 		 	uncompress_switch00:
-		 		li t2, 0xFF000000 # load mask 
-		 		and a0, s1, t2 # get color from sprite palette
-		 		srli a0, a0, 24 # adjust bits
-		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
+		 		sb s7, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch01:
-		 		li t2, 0x00FF0000 # load mask 
-		 		and a0, s1, t2 # get color from sprite palette
-		 		srli a0, a0, 16 # adjust bits
-		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
+		 		sb s8, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch10:
-		 		li t2, 0x0000FF00 # load mask 
-		 		and a0, s1, t2 # get color from sprite palette
-		 		srli a0, a0, 8 # adjust bits
-		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
+		 		sb s9, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 		 	uncompress_switch11:
-		 		li t2, 0x000000FF # load mask 
-		 		and a0, s1, t2 # get color from sprite palette
-		 		sb a0, 0(s2) # store pixel at VRAMPOINTER
+		 		sb s10, 0(s2) # store pixel at VRAMPOINTER
 		 		j uncompress_switchend 
 	 	uncompress_switchend:	 		
 	 		jalr zero, ra,0
@@ -195,6 +339,116 @@ uncompress:
 		sw s2, 0(t0)
 
 		lw s0, 0(sp)
+			lw s1, 4(sp)
+			lw s2, 8(sp)
+			lw s3, 12(sp)
+			lw s4, 16(sp)
+			lw s5, 20(sp)
+			lw s6, 24(sp)
+			lw s7, 28(sp)
+			lw s8, 32(sp)
+			lw s9, 36(sp)
+			lw s10, 40(sp)
+			lw s11, 44(sp)
+			lw t0, 48(sp)
+			lw t1, 52(sp)
+			lw t2, 56(sp)
+			lw t3, 60(sp)
+			lw t4, 64(sp)
+			lw t5, 68(sp)
+			lw t6, 72(sp)
+			lw ra, 76(sp)
+			addi sp, sp 80
+		jalr zero,ra, 0
+
+	 	
+#input: a0 (tile address) !!UNCOMPRESSED!!
+#	a1 (draw address)
+drawtile:
+
+	addi sp, sp, -80
+		sw s0, 0(sp)
+		sw s1, 4(sp)
+		sw s2, 8(sp)
+		sw s3, 12(sp)
+		sw s4, 16(sp)
+		sw s5, 20(sp)
+		sw s6, 24(sp)
+		sw s7, 28(sp)
+		sw s8, 32(sp)
+		sw s9, 36(sp)
+		sw s10, 40(sp)
+		sw s11, 44(sp)
+		sw t0, 48(sp)
+		sw t1, 52(sp)
+		sw t2, 56(sp)
+		sw t3, 60(sp)
+		sw t4, 64(sp)
+		sw t5, 68(sp)
+	 	sw t6, 72(sp)
+		sw ra, 76(sp)
+
+
+	li t0, 0
+	li t1, 16
+	mv s0, a0
+	mv s1, a1
+	drawtile_loop1:
+		beq t0, t1, drawtile_loop1_end
+		lw t2, 0(s0)
+		sb t2, 0(s1)
+		srli t2, t2, 8
+		sb t2, 1(s1)
+		srli t2, t2, 8
+		sb t2, 2(s1)
+		srli t2, t2, 8
+		sb t2, 3(s1)
+
+		lw t2, 4(s0)
+		sb t2, 4(s1)
+		srli t2, t2, 8
+		sb t2, 5(s1)
+		srli t2, t2, 8
+		sb t2, 6(s1)
+		srli t2, t2, 8
+		sb t2, 7(s1)
+
+		addi s0, s0, 8
+		addi s1, s1, 320
+		addi t0, t0, 1
+		j drawtile_loop1
+	drawtile_loop1_end:
+	addi s1, a1, 8
+	addi s0, a0, 128
+	li t0, 0
+	li t1, 16
+	drawtile_loop2:
+		beq t0, t1, drawtile_loop2_end
+		lw t2, 0(s0)
+		sb t2, 0(s1)
+		srli t2, t2, 8
+		sb t2, 1(s1)
+		srli t2, t2, 8
+		sb t2, 2(s1)
+		srli t2, t2, 8
+		sb t2, 3(s1)
+
+		lw t2, 4(s0)
+		sb t2, 4(s1)
+		srli t2, t2, 8
+		sb t2, 5(s1)
+		srli t2, t2, 8
+		sb t2, 6(s1)
+		srli t2, t2, 8
+		sb t2, 7(s1)
+		
+		addi s0, s0, 8
+		addi s1, s1, 320
+		addi t0, t0, 1
+		j drawtile_loop2
+	drawtile_loop2_end:
+
+	lw s0, 0(sp)
 		lw s1, 4(sp)
 		lw s2, 8(sp)
 		lw s3, 12(sp)
@@ -215,171 +469,6 @@ uncompress:
 		lw t6, 72(sp)
 		lw ra, 76(sp)
 		addi sp, sp 80
-		jalr zero,ra, 0
-
-	 	
-#input: a0 (tile address) !!UNCOMPRESSED!!
-#	a1 (draw address)
-drawtile:
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	addi a0, a0, 16
-	addi a1, a1, 320
-	lw t0, 0(a0)
-	sw t0, 0(a1)
-	lw t0, 4(a0)
-	sw t0, 4(a1)
-	lw t0, 8(a0)
-	sw t0, 8(a1)
-	lw t0, 12(a0)
-	sw t0, 12(a1)
-	
 	jalr zero, ra, 0
 
 	
@@ -416,9 +505,21 @@ clsCLS:	li      t1, VGAADDRESSINI       # Memoria VGA
     	li 		t0, 0x01010101
     	mul		a0, t0, a0
 
-forCLS:	beq     t1, t2, fimCLS
-		sw    	a0, 0(t1)
-    	addi    t1, t1, 4
-    	j       forCLS
-    	
-fimCLS:	jalr 	zero,ra,0
+	forCLS:	beq     t1, t2, fimCLS
+			sw    	a0, 0(t1)
+	    	addi    t1, t1, 4
+	    	j       forCLS
+	    	
+	fimCLS:	jalr 	zero,ra,0
+
+
+# given a certain address of a 16x16 object, it returns 
+blankSection:
+	mv s0, a0 #starting pos
+	mv t0, s0 #actual pos
+	
+	
+		
+EXIT:
+	li a7, 10
+	ecall
