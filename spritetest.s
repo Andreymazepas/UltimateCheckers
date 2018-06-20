@@ -14,7 +14,7 @@ testsprite:
   0x75,0xC0,0xD7,0x70,0x5D,0x70,0x75,0xF0,
   0x97,0x70,0x5D,0x70,0x65,0xC0,0x57,0x00,
   0x5C,0x00,0x70,0x00,0xC0,0x00,0x00,0x00
-testsprite_palette: .word 0xFFFFFFFF
+testsprite_palette: .word 0x00FFFFFF
 testsprite_address: .word 0x00000000
 testsprite_x: .word 0
 testsprite_y: .word 0
@@ -31,21 +31,28 @@ testpiece:
   0xFF,0x00,0xAB,0xC0,0xAA,0xC0,0x6A,0xC0,
   0x5A,0xC0,0x5A,0xC0,0x6A,0xC0,0xAA,0xC0,
   0xAA,0xC0,0xFF,0x00,0x00,0x00,0x00,0x00
-testpiece_palette: .word 0xFFFFFFFF
+testpiece_palette: .word 0x00FFFFFF
 testpiece_address: .word 0x00000000
 testpiece_position: .word 0xff007dc8
 
 COLOR_PALETTE: .word 0x49A274FE
 .eqv VGAADDRESSINI      0xFF000000
 .eqv VGAADDRESSFIM      0xFF012C00
+.eqv BG1ADDRESSINI	0xFF300000
+.eqv BG2ADDRESSINI	0xFF400000
+.eqv FRAMEWAIT		15
 
 
 
 
 .text
 	
-	li a0, 0x00000049
+	li a0, 0x00000000
 	jal clsCLS
+	#li a0, 0xff000000
+	#jal rainbowcls
+	#li a0, 0xff300000
+	#jal rainbowcls
 	
 	
 	la a0, testsprite
@@ -62,13 +69,21 @@ COLOR_PALETTE: .word 0x49A274FE
 	
 	li a1, 0xff007dc8
 	jal drawtile
+	mv a0, a1
+	jal movetoBG
+
 	
 	li a0, 0xff007dc8
 	jal getcoordinates
-	addi a1, a1, -16
+	addi a0, a0, 32
 	la a2, testsprite_position
 	la a3, testsprite_address
 	jal MOVE_OBJECT
+	addi a0, a0, -64
+	jal MOVE_OBJECT
+	addi a0, a0, 64
+	jal MOVE_OBJECT
+	j EXIT
 	
 	
 	li a0, 50
@@ -108,7 +123,7 @@ COLOR_PALETTE: .word 0x49A274FE
 	
 	MOVE_OBJECT:
 		#############
-		addi sp, sp, -80
+		addi sp, sp, -96
 			sw s0, 0(sp)
 			sw s1, 4(sp)
 			sw s2, 8(sp)
@@ -129,6 +144,10 @@ COLOR_PALETTE: .word 0x49A274FE
 			sw t5, 68(sp)
 		 	sw t6, 72(sp)
 			sw ra, 76(sp)
+			sw a0, 80(sp)
+			sw a1, 84(sp)
+			sw a2, 88(sp)
+			sw a3, 92(sp)
 		#############
 		mv s0, a0
 		mv s1, a1
@@ -139,6 +158,7 @@ COLOR_PALETTE: .word 0x49A274FE
 		
 		move_loop:
 		lw t1, 0(s3)
+		mv t6, t1 # backup of original position
 		beq t1, s2, endmove_loop
 			mv a0, t1
 			jal getcoordinates
@@ -163,10 +183,12 @@ COLOR_PALETTE: .word 0x49A274FE
 				jal getaddress
 				sw a0, 0(s3) #store new position
 				#DRAW SHIT
-				mv a1, a0 # position to draw
+				mv a0, t6 # recover original position
+				#jal undrawtile
+				lw a1, 0(s3) # position to draw
 				lw a0, 0(s4) # address of graphics
 				jal drawtile
-				li a0, 15
+				li a0, FRAMEWAIT
 				li a7, 32 # sleep
 				ecall
 			j move_loop
@@ -192,7 +214,11 @@ COLOR_PALETTE: .word 0x49A274FE
 			lw t5, 68(sp)
 			lw t6, 72(sp)
 			lw ra, 76(sp)
-			addi sp, sp 80
+			lw a0, 80(sp)
+			lw a1, 84(sp)
+			lw a2, 88(sp)
+			lw a3, 92(sp)
+			addi sp, sp 96
 		##############
 		jalr zero, ra, 0
 
@@ -231,6 +257,8 @@ COLOR_PALETTE: .word 0x49A274FE
 		
 		move_loop2:
 		lw t1, 0(s3)
+		mv t6, t1 # backup of original position
+		
 		beq t1, s2, endmove_loop2
 			mv a0, t1
 			jal getcoordinates
@@ -258,7 +286,11 @@ COLOR_PALETTE: .word 0x49A274FE
 				add t0, a0, t0
 				sw t0, 0(s6) # store piece new position
 				#DRAW SHIT
-				
+				mv a0, t6 # recover original position
+				#jal undrawtile
+				li a0, 3200
+				add a0, t1, a0
+				#jal undrawtile
 				
 				lw a1, 0(s6) # position to draw piece
 				lw a0, 0(s5) # address of graphics piece
@@ -270,7 +302,7 @@ COLOR_PALETTE: .word 0x49A274FE
 				jal drawtile
 				
 				
-				li a0, 15
+				li a0, FRAMEWAIT
 				li a7, 32 # sleep
 				ecall
 			j move_loop2
@@ -545,27 +577,54 @@ drawtile:
 	drawtile_loop1:
 		beq t0, t1, drawtile_loop1_end
 		lw t2, 0(s0)
+		jal gettransparencylayer
 		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 1(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 2(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 3(s1)
-
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		lw t2, 4(s0)
-		sb t2, 4(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 5(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 6(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 7(s1)
-
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		addi s0, s0, 8
-		addi s1, s1, 320
+		addi s1, s1, 313
 		addi t0, t0, 1
 		j drawtile_loop1
+		
+		gettransparencylayer:
+			li t5, 0x000000FF
+			and t5, t5, t2
+			li t6, 0xC7
+			beq t5, t6, istransparent
+			jalr zero, ra,0
+			istransparent:
+			li t5, 0x00300000
+			add t5, s1, t5
+			lb t5, 0(t5)
+			sb t5, 0(s1)
+			jalr zero, ra, 4
+			
 	drawtile_loop1_end:
 	addi s1, a1, 8
 	addi s0, a0, 128
@@ -574,25 +633,38 @@ drawtile:
 	drawtile_loop2:
 		beq t0, t1, drawtile_loop2_end
 		lw t2, 0(s0)
+		jal gettransparencylayer
 		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 1(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 2(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 3(s1)
-
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		lw t2, 4(s0)
-		sb t2, 4(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 5(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 6(s1)
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		srli t2, t2, 8
-		sb t2, 7(s1)
-		
+		addi s1, s1, 1
+		jal gettransparencylayer
+		sb t2, 0(s1)
 		addi s0, s0, 8
-		addi s1, s1, 320
+		addi s1, s1, 313
 		addi t0, t0, 1
 		j drawtile_loop2
 	drawtile_loop2_end:
@@ -618,6 +690,160 @@ drawtile:
 		lw t6, 72(sp)
 		lw ra, 76(sp)
 		addi sp, sp 80
+	jalr zero, ra, 0
+
+# the worst name in recent history
+# input: a0 address
+undrawtile:
+	addi sp, sp, -28
+		sw s0, 0(sp)
+		sw s1, 4(sp)
+		sw t0, 8(sp)
+		sw t1, 12(sp)
+		sw t2, 16(sp)
+		sw t3, 20(sp)
+		sw t4, 24(sp)
+	
+	mv s0, a0
+	li s1, 0x00300000 #ff3000000
+	add s1, a0, s1
+	li t0, 0
+	li t1, 16
+	undraw_loop1:
+		beq t0, t1 undraw_loop1_end
+		li t2, 0
+		li t3, 16
+		undraw_loop2:
+			beq t2, t3, undraw_loop2_end
+			lb t4, 0(s1)
+			sb t4, 0(s0)
+			addi s1, s1, 1
+			addi s0, s0, 1
+			addi t2, t2, 1
+			j undraw_loop2
+			undraw_loop2_end:
+			addi t0, t0, 1
+			addi s1, s1, 304
+			addi s0, s0, 304
+			j undraw_loop1 
+	undraw_loop1_end:
+	
+	
+	lw s0, 0(sp)
+		lw s1, 4(sp)
+		lw t0, 8(sp)
+		lw t1, 12(sp)
+		lw t2, 16(sp)
+		lw t3, 20(sp)
+		lw t4, 24(sp)
+		addi sp, sp, 28
+		
+	jalr zero, ra, 0
+
+movetoBG:
+	addi sp, sp, -36
+		sw s0, 0(sp)
+		sw s1, 4(sp)
+		sw t0, 8(sp)
+		sw t1, 12(sp)
+		sw t2, 16(sp)
+		sw t3, 20(sp)
+		sw t4, 24(sp)
+		sw ra, 28(sp)
+		sw t5, 32(sp)
+	
+	mv s0, a0
+	li s1, 0x00300000 #ff3000000
+	add s1, a0, s1
+	li t0, 0
+	li t1, 16
+	li t5, 0xffffffC7
+	movetoBG_loop1:
+		beq t0, t1 movetoBG_loop1_end
+		li t2, 0
+		li t3, 16
+		movetoBG_loop2:
+			beq t2, t3, movetoBG_loop2_end
+			lb t4, 0(s0)
+			beq t4, t5, movetoBG_skiptransparency
+			sb t4, 0(s1)
+			movetoBG_skiptransparency:
+			addi s1, s1, 1
+			addi s0, s0, 1
+			addi t2, t2, 1
+			j movetoBG_loop2
+			movetoBG_loop2_end:
+			addi t0, t0, 1
+			addi s1, s1, 304
+			addi s0, s0, 304
+			j movetoBG_loop1 
+	movetoBG_loop1_end:
+	jal undrawtile
+	
+	lw s0, 0(sp)
+		lw s1, 4(sp)
+		lw t0, 8(sp)
+		lw t1, 12(sp)
+		lw t2, 16(sp)
+		lw t3, 20(sp)
+		lw t4, 24(sp)
+		lw ra, 28(sp)
+		lw t5, 32(sp)
+		addi sp, sp, 36
+		
+	jalr zero, ra, 0
+
+movefromBG1:
+	addi sp, sp, -32
+		sw s0, 0(sp)
+		sw s1, 4(sp)
+		sw t0, 8(sp)
+		sw t1, 12(sp)
+		sw t2, 16(sp)
+		sw t3, 20(sp)
+		sw t4, 24(sp)
+		sw s2, 28(sp)
+	
+	mv s0, a0
+	li s1, 0x00300000 #ff3000000
+	add s1, a0, s1
+	li s2, 0x0010000
+	add s2, s1, s2
+	li t0, 0
+	li t1, 16
+	movefromBG_loop1:
+		beq t0, t1 movefromBG_loop1_end
+		li t2, 0
+		li t3, 16
+		movefromBG_loop2:
+			beq t2, t3, movefromBG_loop2_end
+			lb t4, 0(s1)
+			sb t4, 0(s0)
+			lb t4, 0(s2)
+			sb t4, 0(s1)
+			addi s1, s1, 1
+			addi s2, s2, 1
+			addi s0, s0, 1
+			addi t2, t2, 1
+			j movefromBG_loop2
+			movefromBG_loop2_end:
+			addi t0, t0, 1
+			addi s1, s1, 304
+			addi s0, s0, 304
+			addi s2, s2, 304
+			j movefromBG_loop1 
+	movefromBG_loop1_end:
+	
+	lw s0, 0(sp)
+		lw s1, 4(sp)
+		lw t0, 8(sp)
+		lw t1, 12(sp)
+		lw t2, 16(sp)
+		lw t3, 20(sp)
+		lw t4, 24(sp)
+		lw s2, 28(sp)
+		addi sp, sp, 32
+		
 	jalr zero, ra, 0
 
 	
@@ -672,15 +898,29 @@ clsCLS:	li      t1, VGAADDRESSINI       # Memoria VGA
 	    	j       forCLS
 	    	
 	fimCLS:	jalr 	zero,ra,0
+	
+rainbowcls:
+	li t0, 0x070707
+	li t1, 0x383838
+	li t2, 0xC0C0C0
+	li t3, 0xFFFFFF
+	li t4, 19200
+	li t5, 0
+	mv t6, a0
+	rainbowloop:
+		beq t5, t4, rainbowloop_end
+		sw t0, 0(t6)
+		sw t1, 4(t6)
+		sw t2, 8(t6)
+		sw t3, 12(t6)
+		addi t6, t6, 16
+		addi t5, t5, 1
+		j rainbowloop
+		rainbowloop_end:
+		jalr zero,ra,0
 
 
-# given a certain address of a 16x16 object, it returns 
-blankSection:
-	mv s0, a0 #starting pos
-	mv t0, s0 #actual pos
-	
-	
-		
+
 EXIT:
 	li a7, 10
 	ecall
