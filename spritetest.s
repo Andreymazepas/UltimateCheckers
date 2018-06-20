@@ -20,8 +20,20 @@ testsprite_x: .word 0
 testsprite_y: .word 0
 testsprite_position: .word 0xFF000000
 moved: .word 0
-animacaoidiota: .word 260, 113, 268, 152, 217, 167, 160, 181,
- 103, 171, 65, 148, 41, 119, 54, 71, 112, 43, 161, 39, 249, 50, 245, 92, 164, 116
+
+
+testpiece:
+ .byte 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0x03,0xFF,0x0F,0xAA,0x0E,0xAA,0x0E,0xA5,
+  0x0E,0x95,0x0E,0x95,0x0E,0xA5,0x0E,0xAA,
+  0x0F,0xAA,0x03,0xFF,0x00,0x00,0x00,0x00,
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  0xFF,0x00,0xAB,0xC0,0xAA,0xC0,0x6A,0xC0,
+  0x5A,0xC0,0x5A,0xC0,0x6A,0xC0,0xAA,0xC0,
+  0xAA,0xC0,0xFF,0x00,0x00,0x00,0x00,0x00
+testpiece_palette: .word 0xFFFFFFFF
+testpiece_address: .word 0x00000000
+testpiece_position: .word 0xff007dc8
 
 COLOR_PALETTE: .word 0x49A274FE
 .eqv VGAADDRESSINI      0xFF000000
@@ -41,21 +53,52 @@ COLOR_PALETTE: .word 0x49A274FE
 	jal uncompress
 	la t0, testsprite_address
 	sw a0, 0(t0)
+
+	la a0, testpiece
+	lw a1, testpiece_palette
+	jal uncompress
+	la t0, testpiece_address
+	sw a0, 0(t0)
 	
-	li a0, 0
-	li a1, 0
+	li a1, 0xff007dc8
+	jal drawtile
+	
+	li a0, 0xff007dc8
+	jal getcoordinates
+	addi a1, a1, -16
 	la a2, testsprite_position
 	la a3, testsprite_address
-	la t0, animacaoidiota
-	loopidiota:
-		lw a0, 0(t0)
-		lw a1, 4(t0)
-		addi t0, t0, 8
-		jal MOVE_OBJECT
-		li a0, 500
-		li a7, 32
-		ecall
-		j loopidiota
+	jal MOVE_OBJECT
+	
+	
+	li a0, 50
+	li a1, 200
+	la a2, testsprite_position
+	la a3, testsprite_address
+	la a4, testpiece_address
+	la a5, testpiece_position
+	jal MOVE_2OBJECTS
+	la t1, testsprite_position
+	lw t0, 0(t1)
+	li t2, -1600
+	add t0, t0, t2
+	sw t0, 0(t1)
+
+	la a0, testpiece_address
+	lw a0, 0(a0)
+	la a1, testpiece_position
+	lw a1, 0(a1)
+	jal drawtile
+	
+	li a0, 0xff000000
+	jal getcoordinates
+	la a2, testsprite_position
+	la a3, testsprite_address
+	jal MOVE_OBJECT
+	
+	li a7, 10
+	ecall
+	
 	
 
 	loop:
@@ -64,7 +107,7 @@ COLOR_PALETTE: .word 0x49A274FE
 		li a1, 200 # y destination
 	
 	MOVE_OBJECT:
-
+		#############
 		addi sp, sp, -80
 			sw s0, 0(sp)
 			sw s1, 4(sp)
@@ -86,7 +129,7 @@ COLOR_PALETTE: .word 0x49A274FE
 			sw t5, 68(sp)
 		 	sw t6, 72(sp)
 			sw ra, 76(sp)
-
+		#############
 		mv s0, a0
 		mv s1, a1
 		mv s3, a2 # address of position
@@ -128,6 +171,7 @@ COLOR_PALETTE: .word 0x49A274FE
 				ecall
 			j move_loop
 		endmove_loop:
+		##############
 		lw s0, 0(sp)
 			lw s1, 4(sp)
 			lw s2, 8(sp)
@@ -149,6 +193,111 @@ COLOR_PALETTE: .word 0x49A274FE
 			lw t6, 72(sp)
 			lw ra, 76(sp)
 			addi sp, sp 80
+		##############
+		jalr zero, ra, 0
+
+	MOVE_2OBJECTS:
+		#############
+		addi sp, sp, -80
+			sw s0, 0(sp)
+			sw s1, 4(sp)
+			sw s2, 8(sp)
+			sw s3, 12(sp)
+			sw s4, 16(sp)
+			sw s5, 20(sp)
+			sw s6, 24(sp)
+			sw s7, 28(sp)
+			sw s8, 32(sp)
+			sw s9, 36(sp)
+			sw s10, 40(sp)
+			sw s11, 44(sp)
+			sw t0, 48(sp)
+			sw t1, 52(sp)
+			sw t2, 56(sp)
+			sw t3, 60(sp)
+			sw t4, 64(sp)
+			sw t5, 68(sp)
+		 	sw t6, 72(sp)
+			sw ra, 76(sp)
+		#############
+		mv s0, a0 # x destination
+		mv s1, a1 # y destination
+		mv s3, a2 # address of position (cursor)
+		mv s4, a3 # address of graphical data (cursor)
+		mv s5, a4 # address of second object graphical data (piece)
+		mv s6, a5 # address of position (piece)
+		jal getaddress
+		mv s2, a0 # destination address (cursor)
+		
+		move_loop2:
+		lw t1, 0(s3)
+		beq t1, s2, endmove_loop2
+			mv a0, t1
+			jal getcoordinates
+			bgt a0,s0, greater_x2
+			blt a0,s0, lesser_x2
+			j move_y2
+			greater_x2:
+				addi a0, a0, -1
+				j move_y2
+			lesser_x2:
+				addi a0, a0, 1
+			move_y2:
+				bgt a1, s1, greater_y2
+				blt a1, s1, lesser_y2
+				j store_move_address2
+			greater_y2:
+				addi a1, a1, -1
+				j store_move_address2
+			lesser_y2:
+				addi a1, a1, 1
+			store_move_address2:
+				jal getaddress
+				sw a0, 0(s3) #store new position (cursor)
+				li t0, 3200 # cursor + 3200 downwards
+				add t0, a0, t0
+				sw t0, 0(s6) # store piece new position
+				#DRAW SHIT
+				
+				
+				lw a1, 0(s6) # position to draw piece
+				lw a0, 0(s5) # address of graphics piece
+				jal drawtile
+				
+				
+				lw a1, 0(s3) # position to draw cursor
+				lw a0, 0(s4) # address of graphics cursor
+				jal drawtile
+				
+				
+				li a0, 15
+				li a7, 32 # sleep
+				ecall
+			j move_loop2
+		endmove_loop2:
+		##############
+		lw s0, 0(sp)
+			lw s1, 4(sp)
+			lw s2, 8(sp)
+			lw s3, 12(sp)
+			lw s4, 16(sp)
+			lw s5, 20(sp)
+			lw s6, 24(sp)
+			lw s7, 28(sp)
+			lw s8, 32(sp)
+			lw s9, 36(sp)
+			lw s10, 40(sp)
+			lw s11, 44(sp)
+			lw t0, 48(sp)
+			lw t1, 52(sp)
+			lw t2, 56(sp)
+			lw t3, 60(sp)
+			lw t4, 64(sp)
+			lw t5, 68(sp)
+			lw t6, 72(sp)
+			lw ra, 76(sp)
+			addi sp, sp 80
+		##############
 		jalr zero, ra, 0
 
 
@@ -476,6 +625,10 @@ drawtile:
 #output: a0 (x)
 #	 a1 (y)
 getcoordinates:
+	addi sp, sp, -12
+	sw t0, 0(sp)
+	sw t1, 4(sp)
+	sw t2, 8(sp)
 	li t0, 0x0001FFFF #mask relevant bits
 	and a0, a0, t0
 	li t0, 320
@@ -483,6 +636,10 @@ getcoordinates:
 	rem t2, a0, t0
 	mv a1, t1
 	mv a0, t2
+	lw t0, 0(sp)
+	lw t1, 4(sp)
+	lw t2, 8(sp)
+	addi sp, sp, 12
 	jr ra
 
 
@@ -490,12 +647,16 @@ getcoordinates:
 #	 a1 (y)
 #output: ao (address)
 getaddress:
+	addi sp, sp, -4
+	sw t0, 0(sp)
 	li t0, 320
 	mul a1, a1, t0
 	add a1, a1, a0
 	mv a0, a1
 	li t0, 0xff000000
 	add a0, a0, t0
+	lw t0, 0(sp)
+	addi sp, sp, 4
 	jr ra
 	
 #input: a0 (color)
