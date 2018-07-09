@@ -1,0 +1,14 @@
+.data
+random: .word 0
+.text
+la a0, random
+li a1, 0x38
+li a7, 40
+ecall
+
+
+lw a0, random
+li a1, 2
+li a7, 42
+ecall
+

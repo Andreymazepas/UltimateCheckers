@@ -5,10 +5,11 @@
 	VRAMPOINTER: .word	0xFF100000
 
 	ERROR_EXIT_CODE: .byte 0x00
+	random: .word 0
 	.align 2
 	pieces: 
 		.byte 	0x80, 0x82, 0x84, 0x86, 0x89, 0x8b, 0x8d, 0x8f, 0x90, 0x92, 0x94, 0x96
-			0x24, 0x2b, 0x2d, 0x2f, 0x30, 0x32, 0x34, 0x36, 0x39, 0x3b, 0x3d, 0x3f
+			0x29, 0x2b, 0x2d, 0x2f, 0x30, 0x32, 0x34, 0x36, 0x39, 0x3b, 0x3d, 0x3f
 	.align 2
 	piecesStatus:
 		.byte   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
@@ -1339,11 +1340,13 @@
 	choosePieceString4: .byte 0xB3, 0x20, 0x20, 0x20, 0xBA, 0x20, 0x20, 0x20, 0xBA, 0x20, 0x20, 0x20, 0xB3	
 	choosePieceString5: .byte 0xC0, 0xC4, 0xC4, 0xC4, 0xD0, 0xC4, 0xC4, 0xC4, 0xD0, 0xC4, 0xC4, 0xC4, 0xB9
 
-	chooseDifficultyString1: .byte 0x20, 0x31, 0x2E, 0x20, 0x5B, 0x65, 0x72, 0x73, 0x75, 0x73 # 10
+	chooseDifficultyString1: .byte 0x20, 0x31, 0x2E, 0x20, 0x56, 0x65, 0x72, 0x73, 0x75, 0x73 # 10
 	chooseDifficultyString2: .byte 0x20, 0x32, 0x2E, 0x20, 0x45, 0x61, 0x73, 0x79 # 8
-	chooseDifficultyString3: .byte 0x00, 0x33, 0x2E, 0x20, 0x4E, 0x65, 0x64, 0x20, 0x28, 0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x65, 0x29 # 16
+	chooseDifficultyString3: .byte 0x00, 0x33, 0x2E, 0x20, 0x4D, 0x65, 0x64, 0x20, 0x28, 0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64, 0x29 # 16
 	chooseDifficultyString4: .byte 0x00, 0x34, 0x2E, 0x20, 0x48, 0x61, 0x72, 0x64, 0x20, 0x3c, 0x44, 0x4C, 0x43, 0x3e # 14
 
+	playerwinstring: .byte 	0x50, 0x31, 0x20, 0x57, 0x69, 0x6e, 0x73
+	cpuwinstring: .byte 	0x50, 0x32, 0x20, 0x57, 0x69, 0x6e, 0x73
 	mainmenustring1: .byte 0x50, 0x72, 0x65, 0x73, 0x73, 0x20, 0x3c, 0x45, 0x3e # 
 	# sound
 		CONT:		.word 55
@@ -1357,15 +1360,12 @@
 	#
 	
 	boardSelectionPos: .word 0
-	soundEffects: .word 0x1F300250, 0x1F500350, 0x1F450150, 0x1f500250, 0x1f270350
+	soundEffects: .word 0x1F300250, 0x1F500350, 0x1F450150, 0x1f500250, 0x1f270350, 0x1f300150, 0x1f400150,0x1f500250,
 	moves: .word 2, 12, 13
 	GAMEMODE: .word 0
 	willAPieceDie: .byte 0x00
 	pieceToDie: .byte 0x00
-	numberPiecesWithMoves: .word 0
-	numberPiecesWithMovesOBG: .word 0
-	piecesWithMovesOBG: .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 
-	piecesWithMoves: .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 
+
 
 .text
 
@@ -1390,23 +1390,25 @@
 	# MAIN
 
 
+
 		mjal(clearScreen)
 		mjal(chooseColor)
 		mjal(initialclearScreen)
 		mjal(showloading)
 		mjal(initializeFont)
-		#mjal(drawBoardBG)
+		mjal(drawBoardBG)
 		mjal(initializeBorder)
 		mjal(initializeSprites)
-		#mjal(initializeMainMenu)
+		mjal(initializeMainMenu)
 		mjal(clearScreen2)
-		#mjal(showMenu)
-
-		#mjal(chooseDifficulty)
+		
+		mjal(showMenu)
+		mjal(clearScreen)
+		mjal(chooseDifficulty)
 
 		mjal(clearScreen)
 		mjal(choosePiece)
-	
+
 		mjal(clearScreen)
 		
 		mjal(copyBG3to1)
@@ -1416,10 +1418,8 @@
 			mjal(drawp1)
 
 			piecesloop1:
-			li a0, 0
-			mjal(generatePiecesWithMoves)
 			li a1 0
-			jal selectBoard
+			mjal(selectBoard)
 			li a1 0
 			mjal(checkPieceValid)
 			li t0, 0xff
@@ -1432,7 +1432,7 @@
 			mjal(generateMoves)
 			movesLoop1:
 			li a1 1
-			jal selectBoard
+			mjal(selectBoard)
 			mv s1, a0 # the selected place 
 			la a1, moves
 			mjal(checkMoveValid)
@@ -1460,10 +1460,8 @@
 			beq t0, t1, level2AI
 			
 			piecesloop2:
-			li a0, 1
-			mjal(generatePiecesWithMoves)
 			li a1 0
-			jal selectBoard
+			mjal(selectBoard)
 			li a1 1
 			mjal(checkPieceValid)
 			li t0, 0xff 
@@ -1476,7 +1474,7 @@
 			mjal(generateMoves) 
 			movesLoop2:
 			li a1 1
-			jal selectBoard
+			mjal(selectBoard)
 			mv s1, a0
 			la a1, moves
 			mjal(checkMoveValid)
@@ -1492,6 +1490,41 @@
 			j gameloop
 
 			randomAI:
+			randompiece:
+			li a7, 30
+			ecall
+			la a0, random
+			li a7, 40
+			ecall
+
+			lw a0, random
+			li a1, 12
+			li a7, 42
+			ecall
+			addi a0, a0, 1
+			mjal(getpiece)
+			mv s0, a0
+			mjal(generateMoves)
+			la t0, moves
+			lw t1, 0(t0)
+			lw s9, 4(t0)
+			lw s10, 8(t0)
+			beqz t1, randompiece
+			randommove:
+			lw a0, random
+			mv a1, t1
+			li a7, 42
+			ecall
+			slli a0, a0, 2
+			add t0, t0, a0
+			lw s1, 4(t0)
+			li a0, 2
+			li a1, 2
+			mjal(SEbox)
+			mv a0, s0
+			mv a1, s1
+			mjal(movepiece)
+
 			mjal(checkVictory)
 			bnez a0, winnerwinner
 			j gameloop
@@ -1509,11 +1542,202 @@
 		winnerwinner:
 			bnez a1, P2WINS
 			P1WINS:
-			# something
+			mjal(clearScreen)
+			li a0, 96
+			mv a1, a0
+			mjal(getaddress)
+			mv a1, a0
+			lw a0, playerdameaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, playerpieceaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, playerdameaddress
+			mjal(drawtile)
+			li a0, 96
+			li a1, 112
+			mjal(getaddress)
+			mv a1, a0
+			lw a0, playerpieceaddress
+			mjal(drawtile)
+			addi a1, a1, 128
+			mjal(drawtile)
+			
+			li a0, 112
+			li a1, 112
+			mjal(getaddress)
+			mv a2, a0
+			li a1, 7
+			lw a0, playerwinstring
+			mjal(drawString)
+
+			li a0, 96
+			li a1, 128
+			mjal(getaddress)
+			mv a1, a0
+			lw a0, playerdameaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, playerpieceaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, playerdameaddress
+			mjal(drawtile)
 			P2WINS:
+			mjal(clearScreen)
+			li a0, 96
+			mv a1, a0
+			mjal(getaddress)
+			mv a1, a0
+			lw a0, cpudameaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, cpupieceaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			lw a0, cpudameaddress
+			mjal(drawtile)
+			li a0, 96
+			li a1, 112
+			mjal(getaddress)
+			mv a1, a0
+			lw a0, cpupieceaddress
+			mjal(drawtile)
+			addi a1, a1, 128
+			mjal(drawtile)
+			
+			li a0, 112
+			li a1, 112
+			mjal(getaddress)
+			mv a2, a0
+			li a1, 7
+			la a0, cpuwinstring
+			mjal(drawString)
+
+			li a0, 96
+			li a1, 128
+			mjal(getaddress)
+			mv a1, a0
+			lw a0, cpudameaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, cpupieceaddress
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			mjal(drawtile)
+			addi a1, a1, 16
+			lw a0, cpudameaddress
+			mjal(drawtile)
 			# something
 		mjal(EXIT)
 		
+		chooseDifficulty:
+			addi sp, sp, -4
+			sw ra, 0(sp)
+			li a0, 32
+			li a1, 32
+			mjal(getaddress)
+			mv a2, a0
+			li a1, 10
+			la a0, chooseDifficultyString1
+			mjal(drawString)
+
+			li a0, 32
+			li a1, 64
+			mjal(getaddress)
+			mv a2, a0
+			li a1, 8
+			la a0, chooseDifficultyString2
+			mjal(drawString)
+
+			li a0, 32
+			li a1, 96
+			mjal(getaddress)
+			mv a2, a0
+			li a1, 16
+			la a0, chooseDifficultyString3
+			mjal(drawString)
+
+			li a0, 32
+			li a1, 128
+			mjal(getaddress)
+			mv a2, a0
+			li a1, 14
+			la a0, chooseDifficultyString4
+			mjal(drawString)
+
+
+			chooseDiffKeyboard:
+			li t1,0xFF200000
+			lw t0,0(t1)
+			andi t0,t0,0x0001		# Le bit de Controle Teclado
+				beq t0,zero,chooseDiffKeyboard   	   	# Se n�o h� tecla pressionada PULA
+				lw t2,4(t1)
+				li t0, 49
+				beq t2, t0, Diff1
+				li t0, 50
+				beq t2, t0, Diff2
+				j chooseDiffKeyboard
+			Diff1:
+			la t0, GAMEMODE
+			li t1, 0
+			sw t1, 0(t0)
+			j DiffEND
+			Diff2:
+			la t0, GAMEMODE
+			li t1, 1
+			sw t1, 0(t0)
+
+			DiffEND:
+			lw ra, 0(sp)
+			addi sp, sp, 4
+			jalr zero, ra, 0
 		chooseColor:
 			addi sp, sp, -4
 			sw ra, 0(sp)
@@ -1921,87 +2145,6 @@
 			jalr zero, ra 0
 
 
-		# based on the player, generates a list of pieces with possible moves
-		generatePiecesWithMoves:
-			addi sp, sp, -36
-			sw t0, 0(sp)
-			sw t1, 4(sp)
-			sw t2, 8(sp)
-			sw t3, 12(sp)
-			sw t4, 16(sp)
-			sw s0, 20(sp)
-			sw s1, 24(sp)
-			sw s2, 28(sp)
-			sw ra, 32(sp)
-
-			la t0, numberPiecesWithMoves
-			li t1, 0
-			sw t1, 0(t0)
-			la t0, numberPiecesWithMovesOBG
-			sw t1, 0(t0)
-			la t0, moves
-			sb t1, 0(t0)
-
-			bnez a0, generateCPU
-			generatePlayer:
-			li t0, 12
-			li t1, 25
-			j generatePlayerLoop
-			generateCPU:
-			li t0, 0
-			li t1, 12
-			generatePlayerLoop:
-			beq t0, t1, generatePlayerLoopend
-			la s0, pieces
-			la s2, piecesStatus
-			add t2, s0, t0
-			lb t2, 0(t2)
-			mv s1, t2
-			add t2, s2, t0
-			lb a0, 0(t2)
-			addi t0, t0, 1
-			beqz a0, generatePlayerLoop
-			mv a0, s1
-			mjal(generateMoves)
-			la t2, willAPieceDie
-			lb t2, 0(t2)
-			beqz t2, generatePlayerCheckMoves
-			la t2, numberPiecesWithMovesOBG
-			lw t3, 0(t2)
-			la t4, piecesWithMovesOBG
-			add t4, t3, t4
-			sb s1, 0(t4)
-			addi t3, t3, 1
-			sw t3, 0(t2)
-
-			generatePlayerCheckMoves:
-			la t2, moves
-			lb t2, 0(t2)
-			beqz t2, generatePlayerLoopend
-			la t2, numberPiecesWithMoves
-			lw t3, 0(t2)
-			la t4, numberPiecesWithMoves
-			add t4, t3, t4
-			sb s1, 0(t4)
-			addi t3, t3, 1
-			sw t3, 0(t2)
-
-
-			generatePlayerLoopend:
-
-			j generatePiecesEND
-			generatePiecesEND:
-			lw t0, 0(sp)
-			lw t1, 4(sp)
-			lw t2, 8(sp)
-			lw t3, 12(sp)
-			lw t4, 16(sp)
-			lw s0, 20(sp)
-			lw s1, 24(sp)
-			lw s2, 28(sp)
-			lw ra, 32(sp)
-			addi sp, sp, 36
-			jalr zero, ra, 0
 		# will accept a piece and generate moves for it
 		# i guess, probably, hopefully
 		generateMoves:
@@ -2100,14 +2243,13 @@
 				mv a0, s0
 				li a1, 1
 				li a2, -1
+
 			generateMovesEND:
 				lw s0, 0(sp)
 				lw t0, 4(sp)
 				lw ra, 8(sp)
 				addi sp, sp, 12
 				jalr zero, ra, 0
-
-		
 
 		# a0 = piece
 		# a1 = x 
@@ -2170,7 +2312,12 @@
 				mv t5, a0 # backup 
 				mjal(getpieceteam)
 				beq a0, s6, diagEND1
+				mv a0, t5
+				mjal(getpiecepos)
 				# if it isnt the same team
+				beqz a0, diagEND1
+				li a1, 7
+				beq a0, a1, diagEND1
 				add a0, s1, s4
 				add a0, a0, s4 # double diag 
 				add a1, s2, s5
@@ -2534,14 +2681,11 @@
 		# a0 = board index
 		# a1 = 0/1 player/cpu 
 		checkPieceValid:
-			addi sp, sp, -28
+			addi sp, sp, -16
 			sw s0, 0(sp)
 			sw s1, 4(sp)
 			sw t0, 8(sp)
 			sw ra, 12(sp)
-			sw t1, 16(sp)
-			sw t2, 20(sp)
-			sw t3, 24(sp)
 
 			mv s0, a0
 			mv s1, a1
@@ -2549,37 +2693,15 @@
 			li t0, 0xff # if there isnt one
 			mv s0, a0
 			beq a1, t0, notyourteam
-
-			la t0, numberPiecesWithMovesOBG
-			lw t1, 0(t0)
-			beqz t1, checkPieceValidlabel
-			li t0, 0
-			la t2, piecesWithMovesOBG
-			OBGloop:
-			beq t0, t1, notyourteam
-			add t3, t2, t0
-			lb t3, 0(t3)
-			andi t3, t3, 0x00FF
-			beq t3, s0, checkPieceValidlabel2
-			addi t0, t0, 1
-			j OBGloop
-			checkPieceValidlabel:
-			la t0, numberPiecesWithMoves
-			lw t1, 0(t0)
-			beqz t1, notyourteam
-			li t0, 0
-			la t2, piecesWithMoves
-			NOBGloop:
-			beq t0, t1, notyourteam
-			add t3, t2, t0
-			lb t3, 0(t3)
-			andi t3, t3, 0x00FF
-			beq t3, s0, checkPieceValidlabel2
-			addi t0, t0, 1
-			j NOBGloop
-			
-			checkPieceValidlabel2:
+			jal getpieceteam
+			bne a0, s1 notyourteam
 			mv a0, s0
+			mjal(generateMoves)
+			la t0, moves
+			lb t0, 0(t0)
+			beqz t0, notyourteam
+			mv a0, s0
+			li a1, 0x00
 			j checkPieceValidEND
 			notyourteam:
 			li a0, 4
@@ -2592,10 +2714,7 @@
 			lw s1, 4(sp)
 			lw t0, 8(sp)
 			lw ra, 12(sp)
-			lw t1, 16(sp)
-			lw t2, 20(sp)
-			lw t3, 24(sp)
-			addi sp, sp, 28
+			addi sp, sp, 16
 
 			jalr zero, ra, 0
 
@@ -2801,6 +2920,7 @@
 			# get piece side to decide which cursor to move 
 			mv a0, s0
 			jal getpieceteam
+			mv s11, a0
 			bnez a0, movepiece_cpu
 			movepiece_player:
 			la a2, playerCursorPosition
@@ -2858,12 +2978,47 @@
 			mv a0, s0
 			mv a1, s1
 			jal updatepiecepos
+			mv s0, a0
+
+			li t0, 0x38
+			and t0, s0, t0
+			srli t0, t0, 3
+			beqz t0, dameifp1
+			li t1, 7
+			beq t0, t1, dameifp2
+			j notadame
+			dameifp1:
+			bnez s11 notadame
+			mv a0, s0
+			mjal(upgradetodame)
+			mv s0, a0
+			li a0, 5
+			li a1, 3
+			mjal(SEbox)
+			j notadame
+
+			dameifp2:
+			beqz s11 notadame
+			mv a0, s0
+			mjal(upgradetodame)
+			mv s0, a0
+			li a0, 5
+			li a1, 3
+			mjal(SEbox)
+
+
+			notadame:
+			mv a0, s0
+			mv a1, s1
 			jal drawpiece
 
 			tormentfulDeath:
 			la t0, willAPieceDie
 			lb t1, 0(t0)
 			beqz t1 tormentfulDeathEND
+			li a0, 5
+			li a1, 3
+			mjal(SEbox)
 			li t1, 0x00
 			sb t1, 0(t0)
 			la t0, pieceToDie
@@ -3212,6 +3367,37 @@
 				add a1, a0, a1
 				lw a0, 0(a1)
 				jalr zero, ra, 0
+
+			upgradetodame:
+				addi sp, sp, -24
+				sw t0, 0(sp)
+				sw t1, 4(sp)
+				sw t2, 8(sp)
+				sw t3, 12(sp)
+				sw s0, 16(sp)
+				sw ra, 20(sp)
+
+				ori s0, a0, 0x40
+				li t0, 0
+				la t1, pieces 
+				upgratepieceposloop:
+				add t2, t1, t0
+				lb t3, 0(t2)
+				andi t3, t3, 0x00FF
+				addi t0, t0, 1
+				bne t3, a0, upgratepieceposloop
+				sb s0, 0(t2)
+				mv a0, s0
+
+				lw t0, 0(sp)
+				lw t1, 4(sp)
+				lw t2, 8(sp)
+				lw t3, 12(sp)
+				lw s0, 16(sp)
+				lw ra, 20(sp)
+				addi sp, sp, 24
+				jalr zero, ra, 0
+
 
 			# what it does: given piece and new board index, update it 
 			# inputs: a0 = piece / a1 = new board index

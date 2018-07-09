@@ -1,0 +1,36 @@
+.data
+soundEffects: .word 0x21300250
+
+.text
+
+
+
+
+li a0, 0
+li a1, 1
+SEbox:
+	mv s0, a1
+	slli a0, a0, 2
+	la t0, soundEffects
+	add t0, t0, a0
+	SEbox_cond:
+	beqz s0, SEboxEND
+	lb s1, 3(t0) # sync or not
+	lb s2, 2(t0) # pitch
+	lb s3, 1(t0) # duration
+	li s4, 100
+	mul s3, s3, s4
+	lb s4, 0(t0) # instrument
+	mv a0, s2
+	mv a1, s3
+	mv a2, s4
+	li a3, 100
+	mv a7, s1
+	ecall
+	addi t0, t0, 4
+	addi s0, s0, -1
+	j SEbox_cond
+	SEboxEND:
+	#jalr zero, ra, 0
+	li a7, 10
+	ecall	
